@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Matura Cloud - Fix v7.6</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        .serif { font-family: 'Merriweather', serif; }
+        
+        .sheet-split { display: flex; flex-direction: column; height: 100%; }
+        @media (min-width: 768px) { .sheet-split { flex-direction: row; } }
+        
+        .source-text { flex: 1; overflow-y: auto; border-bottom: 1px solid #e2e8f0; background: #fff; }
+        @media (min-width: 768px) { .source-text { border-bottom: none; border-right: 1px solid #e2e8f0; width: 50%; } }
+        
+        .questions-panel { flex: 1; overflow-y: auto; background: #f8fafc; }
+        
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .pop-up { animation: popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .correct-bg { background-color: #f0fdf4 !important; border-color: #86efac !important; }
+        .wrong-bg { background-color: #fef2f2 !important; border-color: #fca5a5 !important; }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .dash-card:hover { transform: translateY(-2px); transition: transform 0.2s; }
+    </style>
+</head>
+<body class="text-slate-800 h-screen flex flex-col overflow-hidden bg-slate-50">
+
+    <!-- HEADER -->
+    <header class="bg-white shadow-sm z-30 flex-none border-b border-slate-200">
+        <div class="w-full px-4 py-3 flex justify-between items-center">
+            <div onclick="goHome()" class="cursor-pointer flex items-center gap-3">
+                <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md">M</div>
+                <div>
+                    <h1 class="text-sm font-bold text-slate-900 tracking-tight leading-none">Matura<span class="text-indigo-600">Cloud</span></h1>
+                    <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">Premium</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <div class="text-right hidden md:block">
+                    <p class="text-xs font-bold text-slate-700">Piotr</p>
+                    <p class="text-[10px] text-slate-400">Poziom: Rozszerzony</p>
+                </div>
+                <div class="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center text-xs font-bold text-slate-500">P</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <main class="flex-1 overflow-hidden relative w-full h-full">
+        
+        <!-- DASHBOARD (HOME) -->
+        <div id="view-home" class="absolute inset-0 z-20 bg-slate-50 p-4 md:p-8 overflow-y-auto">
+            <div class="max-w-5xl mx-auto">
+                
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold text-slate-800">Dzień dobry! ☀️</h2>
+                    <p class="text-slate-500">Oto Twój status przygotowań do matury.</p>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 dash-card">
+                        <p class="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Średni Wynik</p>
+                        <p class="text-2xl font-black text-indigo-600" id="stat-avg">72%</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 dash-card">
+                        <p class="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Arkusze</p>
+                        <p class="text-2xl font-black text-slate-800" id="stat-sheets">4</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 dash-card">
+                        <p class="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Czas nauki</p>
+                        <p class="text-2xl font-black text-slate-800">2h 15m</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-indigo-600 to-violet-600 p-4 rounded-2xl shadow-md dash-card text-white">
+                        <p class="text-xs text-indigo-200 uppercase font-bold tracking-wider mb-1">Do poprawy</p>
+                        <p class="text-sm font-bold">Chemia: Kwasy 🧪</p>
+                        <button onclick="loadSheet('chemia')" class="mt-2 text-[10px] bg-white/20 hover:bg-white/30 px-2 py-1 rounded transition-colors">Rozwiąż teraz →</button>
+                    </div>
+                </div>
+
+                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Dostępne Arkusze</h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-10">
+                    <button onclick="loadSheet('polski')" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-red-400 hover:shadow-md transition-all text-left group relative overflow-hidden">
+                        <div class="absolute right-0 top-0 p-4 opacity-10 text-6xl group-hover:scale-110 transition-transform">🇵🇱</div>
+                        <div class="relative z-10">
+                            <h3 class="font-bold text-slate-800 text-lg">Język Polski</h3>
+                            <p class="text-xs text-slate-500 mt-1">Analiza tekstu: Lalka</p>
+                            <div class="mt-4 flex items-center gap-2">
+                                <span class="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded">CKE 2023</span>
+                                <span class="text-[10px] text-slate-400">Ostatni wynik: 65%</span>
+                            </div>
+                        </div>
+                    </button>
+
+                    <button onclick="loadSheet('matematyka')" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all text-left group relative overflow-hidden">
+                        <div class="absolute right-0 top-0 p-4 opacity-10 text-6xl group-hover:scale-110 transition-transform">📐</div>
+                        <div class="relative z-10">
+                            <h3 class="font-bold text-slate-800 text-lg">Matematyka</h3>
+                            <p class="text-xs text-slate-500 mt-1">Funkcje, Geometria analityczna</p>
+                            <div class="mt-4 flex items-center gap-2">
+                                <span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">CKE 2024</span>
+                                <span class="text-[10px] text-slate-400">Ostatni wynik: 80%</span>
+                            </div>
+                        </div>
+                    </button>
+
+                    <button onclick="loadSheet('angielski')" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all text-left group relative overflow-hidden">
+                        <div class="absolute right-0 top-0 p-4 opacity-10 text-6xl group-hover:scale-110 transition-transform">🇬🇧</div>
+                        <div class="relative z-10">
+                            <h3 class="font-bold text-slate-800 text-lg">Język Angielski</h3>
+                            <p class="text-xs text-slate-500 mt-1">Reading Comprehension</p>
+                            <div class="mt-4 flex items-center gap-2">
+                                <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">Pearson</span>
+                                <span class="text-[10px] text-slate-400">Ostatni wynik: 92%</span>
+                            </div>
+                        </div>
+                    </button>
+
+                    <button onclick="loadSheet('chemia')" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-teal-400 hover:shadow-md transition-all text-left group relative overflow-hidden">
+                        <div class="absolute right-0 top-0 p-4 opacity-10 text-6xl group-hover:scale-110 transition-transform">🧪</div>
+                        <div class="relative z-10">
+                            <h3 class="font-bold text-slate-800 text-lg">Chemia</h3>
+                            <p class="text-xs text-slate-500 mt-1">Kwasy, Stechiometria</p>
+                            <div class="mt-4 flex items-center gap-2">
+                                <span class="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded">Nowy Arkusz</span>
+                                <span class="text-[10px] text-slate-400">Nie rozpoczęto</span>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SHEET VIEW -->
+        <div id="view-sheet" class="absolute inset-0 z-10 bg-white hidden flex flex-col h-full">
+            <div class="bg-white border-b border-slate-200 px-4 py-2 flex justify-between items-center text-xs font-medium text-slate-500 shadow-sm z-20">
+                <div class="flex items-center gap-3">
+                    <button onclick="openExitModal()" class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors" title="Wyjdź z arkusza">
+                        ✕
+                    </button>
+                    <div class="h-4 w-px bg-slate-200"></div>
+                    <div class="flex items-center gap-2">
+                        <span id="sheet-subject-tag" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-600">PREDM</span>
+                        <span id="sheet-title" class="truncate max-w-[150px] md:max-w-xs font-bold text-slate-700">Arkusz</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="hidden md:inline text-[10px] uppercase tracking-wider text-slate-400">Czas:</span>
+                    <span id="timer" class="font-mono bg-slate-100 px-2 py-1 rounded text-slate-700">00:00</span>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-hidden relative">
+                <div class="sheet-split h-full">
+                    <div class="source-text p-6 md:p-10 custom-scrollbar">
+                        <div id="source-content" class="prose prose-sm md:prose-base max-w-none text-slate-700"></div>
+                    </div>
+                    <div class="questions-panel p-4 md:p-8 custom-scrollbar border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50/50">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Zadania</h3>
+                            <span class="text-xs text-slate-400" id="progress-indicator">0/0</span>
+                        </div>
+                        <div id="questions-list" class="space-y-6"></div>
+                        <div class="h-24"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="absolute bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-sm border-t border-slate-200 z-30 flex justify-between items-center md:justify-end">
+                <button onclick="finishSheet()" class="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-700 transition-colors shadow-lg active:scale-95 w-full md:w-auto flex items-center justify-center gap-2">
+                    <span>Zakończ i Sprawdź</span>
+                    <span class="bg-white/20 px-1.5 py-0.5 rounded text-[10px]">➜</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- SUMMARY MODAL -->
+        <div id="summary-modal" class="hidden absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-8 text-center pop-up relative">
+                <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-2 rounded-full shadow-lg">
+                    <div class="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center text-3xl shadow-inner border-4 border-white">
+                        🏆
+                    </div>
+                </div>
+                
+                <h2 class="text-2xl font-bold text-slate-800 mt-6 mb-2">Arkusz Zakończony!</h2>
+                <p class="text-slate-500 text-sm mb-6">Oto wynik sesji.</p>
+                
+                <div class="flex justify-center gap-4 mb-8">
+                    <div class="text-center">
+                        <p class="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Wynik</p>
+                        <p class="text-3xl font-black text-slate-800" id="final-score">0/0</p>
+                    </div>
+                    <div class="w-px bg-slate-100"></div>
+                    <div class="text-center">
+                        <p class="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Czas</p>
+                        <p class="text-3xl font-black text-slate-800" id="final-time">00:00</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-xl mb-6 text-left border border-slate-100">
+                    <p class="text-xs font-bold text-slate-400 uppercase mb-2">Feedback:</p>
+                    <p class="text-sm text-slate-600 leading-snug" id="final-feedback">...</p>
+                </div>
+
+                <button onclick="closeSummary()" class="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 transition-transform active:scale-95 shadow-lg">
+                    Wróć do Dashboardu
+                </button>
+            </div>
+        </div>
+
+        <!-- EXIT CONFIRMATION MODAL (NOWY) -->
+        <div id="exit-modal" class="hidden absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 text-center pop-up">
+                <div class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-2xl mx-auto mb-4">
+                    ⚠️
+                </div>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">Przerwać arkusz?</h3>
+                <p class="text-sm text-slate-500 mb-6">Twój postęp w tej sesji zostanie utracony.</p>
+                <div class="flex gap-3">
+                    <button onclick="closeExitModal()" class="flex-1 py-3 rounded-xl font-bold text-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">Anuluj</button>
+                    <button onclick="confirmExitAction()" class="flex-1 py-3 rounded-xl font-bold text-sm bg-red-600 text-white hover:bg-red-700 transition-colors shadow-lg">Tak, wyjdź</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- DATA ---
+        const CKE_DATA = {
+            polski: {
+                title: "Lalka - Analiza",
+                subject: "Polski",
+                theme: "red",
+                source: `
+                    <h2 class="font-bold text-2xl text-slate-900 mb-2 font-serif">Lalka (fragment)</h2>
+                    <p class="text-sm text-slate-500 mb-6 italic">Bolesław Prus</p>
+                    
+                    <p class="mb-4 serif leading-relaxed">
+                        Wokulski spostrzegł, że panna Izabela patrzy na niego. Zrobiło mu się gorąco i – spuścił oczy.
+                        Gdy je podniósł, panna Izabela rozmawiała z prezesową, a panna Florentyna patrzyła na niego.
+                    </p>
+                    <p class="mb-4 serif leading-relaxed">
+                        – Głupi jestem! – pomyślał. – Wytworne damy nie jedzą tak łapczywie jak ja...
+                        W tej chwili uczuł, że mu coś zawadza w lewą rękę. Był to nóż, który nie wiedzieć kiedy
+                        wziął, choć rybę jada się samym widelcem.
+                    </p>
+                    <p class="mb-4 serif leading-relaxed">
+                        "Jaka ona piękna!... – myślał. – A ja jaki przy niej nędzny!... Co to za toaleta, jakie maniery...
+                        Wszystko, co ją otacza, jest piękne i łagodne, a ja jestem jak ten nóż, co kraje rybę...
+                        Ona nawet nie domyśla się, co się ze mną dzieje."
+                    </p>
+                `,
+                tasks: [
+                    { id: 1, type: "radio", question: "Co jest głównym źródłem dyskomfortu Wokulskiego?", hint: "Zwróć uwagę na to, z kim się porównuje i jaki przedmiot trzyma.", options: ["Zbyt wysoka temperatura w sali.", "Świadomość własnych braków w etykiecie.", "Kłótnia z panną Florentyną.", "Niesmaczna ryba."], correct: 1, explanation: "Wokulski czuje się 'nędzny' przy arystokracji." },
+                    { id: 2, type: "radio", question: "Jakie znaczenie ma metafora 'jestem jak ten nóż'?", hint: "Nóż do ryby jest tu narzędziem niewłaściwym.", options: ["Wokulski czuje się ostry i niebezpieczny.", "Wokulski czuje się niepotrzebny i niepasujący do otoczenia.", "Wokulski jest metaliczny i zimny.", "Wokulski chce kogoś zranić."], correct: 1, explanation: "Porównanie do noża podkreśla jego poczucie bycia 'elementem obcym'." },
+                    { id: 3, type: "radio", question: "Jaki typ narracji dominuje w cytowanych fragmentach myśli bohatera?", hint: "Cudzysłowy i forma 'myślał'.", options: ["Narracja trzecioosobowa obiektywna.", "Mowa niezależna (monolog wewnętrzny).", "Mowa zależna.", "Narracja auktorialna."], correct: 1, explanation: "To monolog wewnętrzny (mowa niezależna)." },
+                    { id: 4, type: "radio", question: "Jak reaguje Izabela Łęcka na zachowanie Wokulskiego w tym fragmencie?", hint: "Przeczytaj ostatnie zdanie fragmentu.", options: ["Śmieje się z niego.", "Jest oburzona jego zachowaniem.", "Nie domyśla się jego przeżyć.", "Pociesza go wzrokiem."], correct: 2, explanation: "Wokulski stwierdza: 'Ona nawet nie domyśla się'." }
+                ]
+            },
+            matematyka: {
+                title: "Funkcje Kwadratowe",
+                subject: "Matematyka",
+                theme: "blue",
+                source: `
+                    <h2 class="font-bold text-2xl text-slate-900 mb-6">Funkcja Kwadratowa</h2>
+                    <p class="mb-4">Analizujemy funkcję: $$f(x) = -x^2 + 4x + 5$$</p>
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm mb-4 text-slate-700">
+                        <strong>Wzory:</strong><br>
+                        Współrzędna $p$ wierzchołka: $$p = \\frac{-b}{2a}$$<br>
+                        Wyróżnik trójmianu (Delta): $$\\Delta = b^2 - 4ac$$
+                    </div>
+                `,
+                tasks: [
+                    { id: 1, type: "radio", question: "Wyznacz pierwszą współrzędną wierzchołka (p).", hint: "Użyj wzoru $p = -b / 2a$. Tutaj $a = -1$, $b = 4$.", options: ["2", "-2", "4", "-4"], correct: 0, explanation: "$p = \\frac{-4}{2 \\cdot (-1)} = 2$." },
+                    { id: 2, type: "radio", question: "Zadanie 2. Ramiona paraboli skierowane są:", hint: "Spójrz na współczynnik $a$.", options: ["W górę", "W dół", "W lewo", "W prawo"], correct: 1, explanation: "Współczynnik $a = -1$ (ujemny) -> ramiona w dół." },
+                    { id: 3, type: "radio", question: "Jaka jest największa wartość tej funkcji (q)?", hint: "Oblicz $f(p)$, czyli $f(2)$.", options: ["5", "9", "4", "-1"], correct: 1, explanation: "$q = f(2) = -(2)^2 + 4(2) + 5 = 9$." },
+                    { id: 4, type: "radio", question: "Ile miejsc zerowych ma ta funkcja?", hint: "Oblicz deltę.", options: ["0", "1", "2", "Nieskończenie wiele"], correct: 2, explanation: "$\\Delta = 36 > 0$, więc 2 miejsca zerowe." }
+                ]
+            },
+            angielski: {
+                title: "Reading Comprehension",
+                subject: "Angielski",
+                theme: "indigo",
+                source: `
+                    <h2 class="font-bold text-2xl text-slate-900 mb-4">Remote Work</h2>
+                    <p class="mb-4 leading-relaxed">
+                        Remote work has become the standard. However, employees report feelings of isolation. 
+                        "Home Office" sounds convenient, but it requires immense self-discipline.
+                    </p>
+                    <p class="mb-4 leading-relaxed">
+                        Studies show that productivity often increases, but creativity might suffer due to the lack of spontaneous interactions.
+                    </p>
+                `,
+                tasks: [
+                    { id: 1, type: "radio", question: "According to the text, working from home:", hint: "Look for 'requires'.", options: ["Is easy.", "Demands strong self-discipline.", "Is only for freelancers.", "Causes happiness."], correct: 1, explanation: "Tekst mówi: 'requires immense self-discipline'." },
+                    { id: 2, type: "radio", question: "What might decrease during remote work?", options: ["Productivity.", "Isolation.", "Creativity.", "Salary."], correct: 2, explanation: "Tekst wspomina: 'creativity might suffer'." },
+                    { id: 3, type: "radio", question: "The word 'immense' means:", hint: "Something very big.", options: ["Tiny.", "Average.", "Huge/Enormous.", "Scary."], correct: 2, explanation: "Immense = huge." },
+                    { id: 4, type: "radio", question: "Why might creativity suffer?", hint: "Lack of something.", options: ["Laziness.", "Lack of interactions.", "Slow internet.", "Meetings."], correct: 1, explanation: "'lack of spontaneous interactions'." }
+                ]
+            },
+            chemia: {
+                title: "Chemia Nieorganiczna",
+                subject: "Chemia",
+                theme: "teal",
+                source: `
+                    <h2 class="font-bold text-2xl text-slate-900 mb-4">Kwasy Tlenowe</h2>
+                    <p class="mb-4">Otrzymywanie kwasu siarkowego(VI) $H_2SO_4$.</p>
+                    <div class="bg-teal-50 p-4 rounded-xl border border-teal-100 text-sm mb-6 text-slate-700">
+                        $$SO_3 + H_2O \\rightarrow H_2SO_4$$
+                    </div>
+                    <ul class="list-disc pl-5 text-sm space-y-1 mb-6">
+                        <li>Silnie higroskopijny.</li>
+                        <li>Stężony zwęgla substancje organiczne.</li>
+                        <li>Egzotermiczne rozcieńczanie.</li>
+                    </ul>
+                `,
+                tasks: [
+                    { id: 1, type: "radio", question: "Jaki tlenek jest bezwodnikiem kwasu siarkowego(VI)?", hint: "Lewa strona równania.", options: ["$SO_2$", "$SO_3$", "$S_2O$", "$H_2O$"], correct: 1, explanation: "Bezwodnikiem jest $SO_3$." },
+                    { id: 2, type: "radio", question: "Zasada rozcieńczania:", hint: "Woda czy kwas?", options: ["Kwas do wody.", "Woda do kwasu.", "Obojętne.", "Szybko wlać."], correct: 0, explanation: "Pamiętaj chemiku młody, wlewaj zawsze kwas do wody." },
+                    { id: 3, type: "radio", question: "Wartość pH roztworu kwasu wynosi:", hint: "Odczyn kwasowy.", options: ["pH > 7", "pH = 7", "pH < 7", "pH = 14"], correct: 2, explanation: "Kwasy mają pH < 7." },
+                    { id: 4, type: "radio", question: "Jon odpowiadający za odczyn kwasowy:", hint: "Produkt dysocjacji.", options: ["$OH^-$", "$H^+$", "$SO_4^{2-}$", "$Cl^-$"], correct: 1, explanation: "To kation wodoru $H^+$." }
+                ]
+            }
+        };
+
+        // --- ENGINE ---
+        const dom = {
+            home: document.getElementById('view-home'),
+            sheet: document.getElementById('view-sheet'),
+            sourceContent: document.getElementById('source-content'),
+            questionsList: document.getElementById('questions-list'),
+            sheetTitle: document.getElementById('sheet-title'),
+            sheetTag: document.getElementById('sheet-subject-tag'),
+            timer: document.getElementById('timer'),
+            progress: document.getElementById('progress-indicator'),
+            summaryModal: document.getElementById('summary-modal'),
+            exitModal: document.getElementById('exit-modal'),
+            finalScore: document.getElementById('final-score'),
+            finalTime: document.getElementById('final-time'),
+            finalFeedback: document.getElementById('final-feedback')
+        };
+
+        let timerInterval;
+        let activeTasks = [];
+        let sessionStats = { total: 0, answered: 0, correct: 0 };
+        let userProgress = { avgScore: 72, sheetsCount: 4, streak: 3 };
+
+        function loadSheet(key) {
+            const data = CKE_DATA[key];
+            if (!data) return;
+
+            dom.home.classList.add('hidden');
+            dom.sheet.classList.remove('hidden');
+            dom.sheetTitle.textContent = data.title;
+            dom.sheetTag.textContent = data.subject;
+            dom.sheetTag.className = `px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-${data.theme}-100 text-${data.theme}-700`;
+            dom.sourceContent.innerHTML = data.source;
+            
+            sessionStats = { total: data.tasks.length, answered: 0, correct: 0 };
+            activeTasks = data.tasks;
+            
+            renderQuestions(data.tasks, data.theme);
+            updateProgress();
+            startTimer();
+            if(window.MathJax) window.MathJax.typeset();
+        }
+
+        function renderQuestions(tasks, theme) {
+            dom.questionsList.innerHTML = '';
+            tasks.forEach((task, index) => {
+                const el = document.createElement('div');
+                el.className = "bg-white p-5 rounded-xl border border-slate-200 shadow-sm fade-in relative";
+                el.id = `task-${task.id}`;
+                
+                let html = `<h4 class="font-bold text-slate-800 mb-3 text-sm">${task.question}</h4>`;
+                if (task.hint) {
+                    html += `<div class="mb-3"><button onclick="toggleHint(${task.id})" class="text-xs text-${theme}-600 bg-${theme}-50 px-2 py-1 rounded hover:bg-${theme}-100 transition-colors">💡 Wskazówka</button><div id="hint-${task.id}" class="hidden mt-2 text-xs text-slate-500 italic border-l-2 border-${theme}-200 pl-2">${task.hint}</div></div>`;
+                }
+                html += `<div class="space-y-2 mb-4" id="options-${task.id}">`;
+                task.options.forEach((opt, idx) => {
+                    html += `<button onclick="checkAnswer(${task.id}, ${idx}, '${theme}')" class="option-btn w-full text-left p-3 border border-slate-200 rounded-lg text-sm hover:bg-slate-50 transition-all flex items-center group"><div class="w-5 h-5 rounded-full border border-slate-300 mr-3 flex items-center justify-center text-[10px] group-hover:border-${theme}-400"></div>${opt}</button>`;
+                });
+                html += `</div>`;
+                html += `<div id="explanation-${task.id}" class="hidden mt-4 pt-4 border-t border-slate-100"><div class="flex items-start gap-2"><span class="text-lg">👨‍🏫</span><div><p class="text-xs font-bold text-slate-700 uppercase mb-1">Wyjaśnienie</p><p class="text-sm text-slate-600 leading-snug">${task.explanation}</p></div></div></div>`;
+                el.innerHTML = html;
+                dom.questionsList.appendChild(el);
+            });
+        }
+
+        function toggleHint(id) { document.getElementById(`hint-${id}`).classList.toggle('hidden'); }
+
+        function checkAnswer(taskId, selectedIdx, theme) {
+            const task = activeTasks.find(t => t.id === taskId);
+            const container = document.getElementById(`options-${taskId}`);
+            const buttons = container.querySelectorAll('button');
+            const explanation = document.getElementById(`explanation-${taskId}`);
+
+            if (buttons[0].disabled) return;
+
+            buttons.forEach(btn => { btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); });
+
+            if (selectedIdx === task.correct) {
+                sessionStats.correct++;
+                const btn = buttons[selectedIdx];
+                btn.classList.remove('opacity-50', 'border-slate-200');
+                btn.classList.add('correct-bg', 'font-medium', 'text-green-800');
+                btn.querySelector('div').textContent = '✓';
+                btn.querySelector('div').classList.add('bg-green-500', 'border-green-500', 'text-white');
+            } else {
+                const btn = buttons[selectedIdx];
+                btn.classList.remove('opacity-50', 'border-slate-200');
+                btn.classList.add('wrong-bg', 'text-red-800');
+                btn.querySelector('div').textContent = '✕';
+                btn.querySelector('div').classList.add('bg-red-500', 'border-red-500', 'text-white');
+                buttons[task.correct].classList.remove('opacity-50');
+                buttons[task.correct].classList.add('border-green-400', 'bg-green-50');
+            }
+
+            sessionStats.answered++;
+            updateProgress();
+            explanation.classList.remove('hidden');
+            explanation.classList.add('fade-in');
+            if(window.MathJax) window.MathJax.typeset();
+        }
+
+        function updateProgress() { dom.progress.textContent = `${sessionStats.answered}/${sessionStats.total}`; }
+
+        function finishSheet() {
+            stopTimer();
+            const percent = Math.round((sessionStats.correct / sessionStats.total) * 100) || 0;
+            userProgress.sheetsCount++;
+            dom.finalScore.textContent = `${sessionStats.correct}/${sessionStats.total}`;
+            dom.finalTime.textContent = dom.timer.textContent;
+            
+            if(percent === 100) dom.finalFeedback.textContent = "Perfekcyjnie! Materiał opanowany.";
+            else if(percent >= 70) dom.finalFeedback.textContent = "Bardzo dobrze, ale sprawdź błędy.";
+            else if(percent >= 30) dom.finalFeedback.textContent = "Początki są trudne. Przeanalizuj błędy.";
+            else dom.finalFeedback.textContent = "Przeczytaj tekst źródłowy jeszcze raz.";
+
+            dom.summaryModal.classList.remove('hidden');
+            document.getElementById('stat-sheets').textContent = userProgress.sheetsCount;
+        }
+
+        function closeSummary() { dom.summaryModal.classList.add('hidden'); goHome(); }
+
+        // --- EXIT LOGIC (Fixed) ---
+        function openExitModal() { dom.exitModal.classList.remove('hidden'); }
+        function closeExitModal() { dom.exitModal.classList.add('hidden'); }
+        function confirmExitAction() { closeExitModal(); goHome(); }
+
+        function goHome() {
+            dom.sheet.classList.add('hidden');
+            dom.home.classList.remove('hidden');
+            stopTimer();
+        }
+
+        function startTimer() {
+            let s = 0;
+            dom.timer.textContent = "00:00";
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                s++;
+                const m = Math.floor(s / 60).toString().padStart(2, '0');
+                const sec = (s % 60).toString().padStart(2, '0');
+                dom.timer.textContent = `${m}:${sec}`;
+            }, 1000);
+        }
+
+        function stopTimer() { if (timerInterval) clearInterval(timerInterval); }
+
+    </script>
+</body>
+</html>
